@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>プライベートギャラリー</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-sub: #8b949e;
+            --accent-color: #238636;
+            --accent-hover: #2ea043;
+            --danger-color: #da3633;
+            --btn-bg: #21262d;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            background-color: rgba(13, 17, 23, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .header-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        button {
+            background-color: var(--btn-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button.primary {
+            background-color: var(--accent-color);
+            border-color: rgba(240, 246, 252, 0.1);
+        }
+
+        .gallery-container {
+            max-width: 600px;
+            margin: 16px auto;
+            padding: 0 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* ユニット単位のスタイル */
+        .media-unit {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 単体写真 */
+        .single-layout img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+        }
+
+        /* ペア表示：上下（横長用） */
+        .pair-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            background-color: var(--border-color);
+        }
+
+        .pair-vertical img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+        }
+
+        /* ペア表示：左右（縦長用） */
+        .pair-horizontal {
+            display: flex;
+            flex-direction: row;
+            gap: 2px;
+            background-color: var(--border-color);
+        }
+
+        .pair-horizontal img {
+            width: 50%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+        }
+
+        /* 管理モード用コントロール */
+        .unit-controls {
+            display: none;
+            padding: 8px 12px;
+            background-color: var(--card-bg);
+            border-top: 1px solid var(--border-color);
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-mode .unit-controls {
+            display: flex;
+        }
+
+        .btn-delete {
+            background-color: transparent;
+            color: var(--danger-color);
+            border: 1px solid var(--danger-color);
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        .btn-toggle-layout {
+            font-size: 12px;
+            padding: 4px 8px;
+        }
+
+        /* 固定ボトムナビゲーション */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(22, 27, 34, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-color);
+            padding: 12px;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .bottom-nav button {
+            flex: 1;
+            max-width: 200px;
+            padding: 12px;
+            font-size: 15px;
+        }
+
+        /* モーダル共通 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        /* パスコード入力画面 */
+        #passcodeModal {
+            background-color: var(--bg-color);
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .passcode-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .passcode-inputs {
+            display: flex;
+            gap: 12px;
+        }
+
+        .passcode-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid var(--text-sub);
+        }
+
+        .passcode-dot.filled {
+            background-color: var(--text-main);
+            border-color: var(--text-main);
+        }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            width: 100%;
+            max-width: 280px;
+        }
+
+        .keypad button {
+            aspect-ratio: 1;
+            border-radius: 50%;
+            font-size: 20px;
+            background-color: var(--btn-bg);
+        }
+
+        /* 画像拡大表示（ライトボックス） */
+        #lightboxModal img {
+            max-width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        /* アップロードフォーム Modal */
+        .modal-content {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .modal-content h2 {
+            font-size: 16px;
+        }
+
+        .file-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .file-input-group label {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        input[type="file"] {
+            font-size: 13px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ヘッダー -->
+    <header>
+        <h1>ギャラリー</h1>
+        <div class="header-btns">
+            <button id="adminToggleBtn" onclick="toggleAdminMode()">管理</button>
+            <button onclick="lockApp()">🔒</button>
+        </div>
+    </header>
+
+    <!-- 写真一覧エリア -->
+    <div class="gallery-container" id="gallery"></div>
+
+    <!-- ボトム操作バー -->
+    <div class="bottom-nav">
+        <button class="primary" onclick="shuffleGallery()">🎲 シャッフル</button>
+        <button id="addBtn" style="display:none;" onclick="openUploadModal()">➕ 追加</button>
+    </div>
+
+    <!-- パスコードロック画面 -->
+    <div class="modal active" id="passcodeModal">
+        <div class="passcode-title" id="passcodeTitle">パスコードを入力</div>
+        <div class="passcode-inputs">
+            <div class="passcode-dot" id="dot0"></div>
+            <div class="passcode-dot" id="dot1"></div>
+            <div class="passcode-dot" id="dot2"></div>
+            <div class="passcode-dot" id="dot3"></div>
+        </div>
+        <div class="keypad">
+            <button onclick="pressKey('1')">1</button>
+            <button onclick="pressKey('2')">2</button>
+            <button onclick="pressKey('3')">3</button>
+            <button onclick="pressKey('4')">4</button>
+            <button onclick="pressKey('5')">5</button>
+            <button onclick="pressKey('6')">6</button>
+            <button onclick="pressKey('7')">7</button>
+            <button onclick="pressKey('8')">8</button>
+            <button onclick="pressKey('9')">9</button>
+            <button style="visibility: hidden;"></button>
+            <button onclick="pressKey('0')">0</button>
+            <button onclick="clearKey()">⌫</button>
+        </div>
+    </div>
+
+    <!-- 画像拡大表示 -->
+    <div class="modal" id="lightboxModal" onclick="closeLightbox()">
+        <img id="lightboxImg" src="" alt="拡大画像">
+    </div>
+
+    <!-- アップロード用モーダル -->
+    <div class="modal" id="uploadModal">
+        <div class="modal-content">
+            <h2>写真を追加</h2>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <button id="modePairBtn" class="primary" onclick="setUploadMode('pair')">ペア (2枚)</button>
+                <button id="modeSingleBtn" onclick="setUploadMode('single')">単体 (1枚)</button>
+            </div>
+
+            <div id="pairInputArea" class="file-input-group">
+                <label>1枚目の写真 (固定順: 先)</label>
+                <input type="file" id="file1" accept="image/*">
+                <label style="margin-top: 8px;">2枚目の写真 (固定順: 後)</label>
+                <input type="file" id="file2" accept="image/*">
+            </div>
+
+            <div id="singleInputArea" class="file-input-group" style="display: none;">
+                <label>写真を選択</label>
+                <input type="file" id="fileSingle" accept="image/*">
+            </div>
+
+            <div class="modal-actions">
+                <button onclick="closeUploadModal()">キャンセル</button>
+                <button class="primary" onclick="saveMedia()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- IndexedDB データベース初期化 ---
+        const DB_NAME = 'PhotoGalleryDB';
+        const STORE_NAME = 'media_units';
+        let db = null;
+
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+                request.onsuccess = (e) => {
+                    db = e.target.result;
+                    resolve();
+                };
+                request.onerror = (e) => reject(e);
+            });
+        }
+
+        function getAllUnits() {
+            return new Promise((resolve) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const req = store.getAll();
+                req.onsuccess = () => resolve(req.result || []);
+            });
+        }
+
+        function saveUnitToDB(unit) {
+            return new Promise((resolve) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.put(unit);
+                tx.oncomplete = () => resolve();
+            });
+        }
+
+        function deleteUnitFromDB(id) {
+            return new Promise((resolve) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.delete(id);
+                tx.oncomplete = () => resolve();
+            });
+        }
+
+        // --- アプリケーション状態 ---
+        let mediaUnits = [];
+        let isAdminMode = false;
+        let currentPasscode = '';
+        let enteredPasscode = '';
+        let uploadMode = 'pair'; // 'pair' or 'single'
+
+        // --- パスコード処理 ---
+        function checkPasscodeSetup() {
+            const saved = localStorage.getItem('gallery_passcode');
+            if (!saved) {
+                document.getElementById('passcodeTitle').innerText = '新しい4桁のパスコードを設定';
+            } else {
+                currentPasscode = saved;
+                document.getElementById('passcodeTitle').innerText = 'パスコードを入力';
+            }
+        }
+
+        function pressKey(num) {
+            if (enteredPasscode.length < 4) {
+                enteredPasscode += num;
+                updatePasscodeDots();
+            }
+
+            if (enteredPasscode.length === 4) {
+                setTimeout(verifyPasscode, 100);
+            }
+        }
+
+        function clearKey() {
+            enteredPasscode = enteredPasscode.slice(0, -1);
+            updatePasscodeDots();
+        }
+
+        function updatePasscodeDots() {
+            for (let i = 0; i < 4; i++) {
+                const dot = document.getElementById(`dot${i}`);
+                if (i < enteredPasscode.length) {
+                    dot.classList.add('filled');
+                } else {
+                    dot.classList.remove('filled');
+                }
+            }
+        }
+
+        function verifyPasscode() {
+            const saved = localStorage.getItem('gallery_passcode');
+            if (!saved) {
+                localStorage.setItem('gallery_passcode', enteredPasscode);
+                currentPasscode = enteredPasscode;
+                unlockApp();
+            } else if (enteredPasscode === currentPasscode) {
+                unlockApp();
+            } else {
+                alert('パスコードが違います');
+                enteredPasscode = '';
+                updatePasscodeDots();
+            }
+        }
+
+        function unlockApp() {
+            document.getElementById('passcodeModal').classList.remove('active');
+            enteredPasscode = '';
+            updatePasscodeDots();
+            loadAndRender();
+        }
+
+        function lockApp() {
+            document.getElementById('passcodeModal').classList.add('active');
+            checkPasscodeSetup();
+        }
+
+        // --- ギャラリーレンダリング ---
+        async function loadAndRender() {
+            mediaUnits = await getAllUnits();
+            renderGallery();
+        }
+
+        function renderGallery() {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            mediaUnits.forEach(unit => {
+                const unitEl = document.createElement('div');
+                unitEl.className = 'media-unit';
+
+                if (unit.type === 'single') {
+                    unitEl.innerHTML = `
+                        <div class="single-layout">
+                            <img src="${unit.img1}" onclick="openLightbox('${unit.img1}')" loading="lazy">
+                        </div>
+                        <div class="unit-controls">
+                            <span>単体</span>
+                            <button class="btn-delete" onclick="deleteUnit('${unit.id}')">削除</button>
+                        </div>
+                    `;
+                } else if (unit.type === 'pair') {
+                    const layoutClass = unit.layout === 'horizontal' ? 'pair-horizontal' : 'pair-vertical';
+                    unitEl.innerHTML = `
+                        <div class="${layoutClass}">
+                            <img src="${unit.img1}" onclick="openLightbox('${unit.img1}')" loading="lazy">
+                            <img src="${unit.img2}" onclick="openLightbox('${unit.img2}')" loading="lazy">
+                        </div>
+                        <div class="unit-controls">
+                            <button class="btn-toggle-layout" onclick="togglePairLayout('${unit.id}')">配置切替 (${unit.layout === 'horizontal' ? '左右' : '上下'})</button>
+                            <button class="btn-delete" onclick="deleteUnit('${unit.id}')">削除</button>
+                        </div>
+                    `;
+                }
+                gallery.appendChild(unitEl);
+            });
+
+            if (isAdminMode) {
+                document.body.classList.add('admin-mode');
+            } else {
+                document.body.classList.remove('admin-mode');
+            }
+        }
+
+        // シャッフル（演出なし・即時）
+        function shuffleGallery() {
+            for (let i = mediaUnits.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [mediaUnits[i], mediaUnits[j]] = [mediaUnits[j], mediaUnits[i]];
+            }
+            renderGallery();
+        }
+
+        // --- 管理モード切り替え ---
+        function toggleAdminMode() {
+            isAdminMode = !isAdminMode;
+            document.getElementById('adminToggleBtn').innerText = isAdminMode ? '完了' : '管理';
+            document.getElementById('addBtn').style.display = isAdminMode ? 'block' : 'none';
+            renderGallery();
+        }
+
+        // --- レイアウト手動切替 ---
+        async function togglePairLayout(id) {
+            const unit = mediaUnits.find(u => u.id === id);
+            if (unit && unit.type === 'pair') {
+                unit.layout = (unit.layout === 'horizontal') ? 'vertical' : 'horizontal';
+                await saveUnitToDB(unit);
+                renderGallery();
+            }
+        }
+
+        // --- 削除 ---
+        async function deleteUnit(id) {
+            if (confirm('この写真を削除しますか？')) {
+                await deleteUnitFromDB(id);
+                mediaUnits = mediaUnits.filter(u => u.id !== id);
+                renderGallery();
+            }
+        }
+
+        // --- 画像アップロード処理 ---
+        function openUploadModal() {
+            document.getElementById('uploadModal').classList.add('active');
+        }
+
+        function closeUploadModal() {
+            document.getElementById('uploadModal').classList.remove('active');
+            document.getElementById('file1').value = '';
+            document.getElementById('file2').value = '';
+            document.getElementById('fileSingle').value = '';
+        }
+
+        function setUploadMode(mode) {
+            uploadMode = mode;
+            if (mode === 'pair') {
+                document.getElementById('modePairBtn').className = 'primary';
+                document.getElementById('modeSingleBtn').className = '';
+                document.getElementById('pairInputArea').style.display = 'flex';
+                document.getElementById('singleInputArea').style.display = 'none';
+            } else {
+                document.getElementById('modePairBtn').className = '';
+                document.getElementById('modeSingleBtn').className = 'primary';
+                document.getElementById('pairInputArea').style.display = 'none';
+                document.getElementById('singleInputArea').style.display = 'flex';
+            }
+        }
+
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function getImageOrientation(base64) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    // 縦長なら 'horizontal' (左右並び)、横長なら 'vertical' (上下並び) をデフォルト推奨
+                    if (img.height > img.width) {
+                        resolve('horizontal');
+                    } else {
+                        resolve('vertical');
+                    }
+                };
+                img.src = base64;
+            });
+        }
+
+        async function saveMedia() {
+            const id = 'unit_' + Date.now();
+
+            if (uploadMode === 'single') {
+                const file = document.getElementById('fileSingle').files[0];
+                if (!file) {
+                    alert('写真を選択してください');
+                    return;
+                }
+                const img1 = await readFileAsBase64(file);
+                const unit = { id, type: 'single', img1 };
+                await saveUnitToDB(unit);
+            } else {
+                const file1 = document.getElementById('file1').files[0];
+                const file2 = document.getElementById('file2').files[0];
+                if (!file1 || !file2) {
+                    alert('2枚の写真を選択してください');
+                    return;
+                }
+                const img1 = await readFileAsBase64(file1);
+                const img2 = await readFileAsBase64(file2);
+                
+                // 1枚目の写真の向きで自動レイアウト判定
+                const autoLayout = await getImageOrientation(img1);
+
+                const unit = { id, type: 'pair', img1, img2, layout: autoLayout };
+                await saveUnitToDB(unit);
+            }
+
+            closeUploadModal();
+            loadAndRender();
+        }
+
+        // --- ライトボックス（拡大表示） ---
+        function openLightbox(src) {
+            document.getElementById('lightboxImg').src = src;
+            document.getElementById('lightboxModal').classList.add('active');
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightboxModal').classList.remove('active');
+        }
+
+        // --- アプリ起動時 ---
+        initDB().then(() => {
+            checkPasscodeSetup();
+        });
+    </script>
+</body>
+</html>
